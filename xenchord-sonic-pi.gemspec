@@ -1,23 +1,23 @@
 # frozen_string_literal: true
 
-require_relative "lib/xenchord/sonic/pi/version"
+# NOTE: This isn't meant to be used as a ruby gem.
 
 Gem::Specification.new do |spec|
   spec.name = "xenchord-sonic-pi"
-  spec.version = Xenchord::Sonic::Pi::VERSION
+  spec.version = '0.1'
   spec.authors = ["euwbah"]
   spec.email = ["euwbah@gmail.com"]
 
-  spec.summary = "TODO: Write a short summary, because RubyGems requires one."
-  spec.description = "TODO: Write a longer description or delete this line."
-  spec.homepage = "TODO: Put your gem's website or public repo URL here."
-  spec.required_ruby_version = ">= 2.6.0"
+  spec.summary = "Helper methods & classes for just intonation music in Sonic Pi"
+  # spec.description = "TODO: Write a longer description or delete this line."
+  spec.homepage = "https://github.com/euwbah/xenchord-sonic-pi"
+  spec.required_ruby_version = ">= 3.2.0"
 
-  spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
+  # spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
 
-  spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "TODO: Put your gem's public repo URL here."
-  spec.metadata["changelog_uri"] = "TODO: Put your gem's CHANGELOG.md URL here."
+  # spec.metadata["homepage_uri"] = nil
+  spec.metadata["source_code_uri"] = "https://github.com/euwbah/xenchord-sonic-pi"
+  # spec.metadata["changelog_uri"] = nil
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
