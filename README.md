@@ -36,7 +36,7 @@ To get a semantic highlighting & autocomplete suggestions, use [ruby-lsp](https:
 - WSL2 OS: Ubuntu 22.04
 - Editor: VSCode
 - Sonic Pi: v4.4.0
-- Sonic Pi Client/Editor: [euwbah/vscode-sonic-pi](https://github.com/euwbah/vscode-sonic-pi)
+- Sonic Pi Client/Editor: [euwbah/vscode-sonic-pi](https://github.com/euwbah/vscode-sonic-pi) running on the same OS as whereever Sonic Pi server was started in.
 
 Both ruby-lsp and ruby-lsp-vscode is currently broken on Windows. As a workaround, I use Remote-SSH to connect VSCode to a vscode-server running in WSL and install the ruby-lsp extension remotely.
 
@@ -178,6 +178,14 @@ VSCode Extensions like vscode-sonic-pi will be installed and run within the WSL2
 It is unclear whether the Scsynth/Sonic Pi daemon is actually being run on the Windows Host or WSL2 Hyper-V (it depends on what VSCode's Remote-SSH actually does).
 
 On the bright side, [it is possible to port-forward WSL2 to LAN](https://jwstanly.com/blog/article/Port+Forwarding+WSL+2+to+Your+LAN/). So an actual solution would be to run the entire setup in Ubuntu (installing Sonic Pi in Ubuntu, etc...). However, I don't trust WSL2's networking & audio to be stable enough for livecoding given this issue: [Can't access UDP services running in WSL on localhost](https://github.com/microsoft/WSL/issues/8783)
+
+## The workaround workaround
+
+- Install Sonic Pi on Windows, use Sonic Pi's default editor to livecode
+- Clone this repo into Windows.
+- In Ubuntu, Create a symlink to the cloned repo.
+- Develop this 'library' in WSL2 to get proper tooling support.
+- `run_file` using the Windows path.
 
 ## Notes to self
 

@@ -4,6 +4,7 @@
 require "prime"
 require "json"
 
+$LIB_ROOT = "C:/Users/dacoo/Documents/SonicPiProj/xenchord-sonic-pi/lib/xenchord_sonic_pi"
 $IP_ADDR = "10.0.0.20"
 
 $GLO = self
@@ -17,6 +18,6 @@ ISO_OCT_EQV_BOUNDS = [-2, 3].freeze # bounds of oct eqv for isoharm search.
 # base frequency of 1/1 in Hz.
 ROOT = 220r
 
-run_file "C:/Users/dacoo/Documents/SonicPiProj/xen_chorder/polyfills.rb"
-run_file "C:/Users/dacoo/Documents/SonicPiProj/xen_chorder/dataclasses.rb"
-run_file "C:/Users/dacoo/Documents/SonicPiProj/xen_chorder/helper.rb"
+run_file "#{$LIB_ROOT}/polyfills.rb"
+run_file "#{$LIB_ROOT}/dataclasses.rb"
+run_file "#{$LIB_ROOT}/helper.rb"
