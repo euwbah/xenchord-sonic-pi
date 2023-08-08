@@ -174,7 +174,7 @@ define :isoharm_search_full do |rats, max_arith_diff=2r|
   return ret
 end
 
-# Same as isoharm_search_full, but returns MultiRatios,
+# Same as isoharm_search_full, but returns Chords,
 # removes duplicate voicings at different octaves.
 #
 define :isoharm_search do |rats, max_arith_diff=2r|

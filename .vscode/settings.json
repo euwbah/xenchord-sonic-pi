@@ -1,0 +1,4 @@
+{
+    "rubyLsp.enableExperimentalFeatures": true,
+    "solargraph.useBundler": true
+}

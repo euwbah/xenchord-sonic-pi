@@ -1,8 +1,8 @@
 live_loop :test do
   stop
   voicing = [
-    MultiRatio.new(10, 12, 13, 15, 18),
-    MultiRatio.new(8, 10, 12, 15, 18)
+    Chord.new(10, 12, 13, 15, 18),
+    Chord.new(8, 10, 12, 15, 18)
   ][look % 8 / 4]
   chd = (voicing + [1/1r, 4/3r, 8/9r][look % 24 / 8]).oct_match(1/1r)
   chd.play
@@ -15,10 +15,10 @@ live_loop :a do
     with_fx :echo, phase: 0.375, decay: 5, mix: 0.5 do
       use_synth :dsaw
       mr = [
-        MultiRatio.new(10, 12, 15, 18),
-        MultiRatio.new(6, 7, 9, 11) + 5/4r,
-        MultiRatio.new(8, 10, 12, 15),
-        MultiRatio.new(8, 10, 12, 15, 18)
+        Chord.new(10, 12, 15, 18),
+        Chord.new(6, 7, 9, 11) + 5/4r,
+        Chord.new(8, 10, 12, 15),
+        Chord.new(8, 10, 12, 15, 18)
       ][look % 4]
       mr -= 2/3r if look % 8 == 0
       mr = mr.oct_match(9/8r)

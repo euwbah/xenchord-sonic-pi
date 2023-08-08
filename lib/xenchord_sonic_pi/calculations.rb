@@ -100,6 +100,7 @@ class CalcSingleton
     @smooth_height = smooth_lcm_pre.each_with_index.map{ |(ratio, cents, lcm, lcm_log2, prime_fac, is_fundamental, weight), idx|
       if idx % 1000 == 0
         $GLO.print "Calculating smooth height metric: #{idx} / #{smooth_lcm_pre.size}"
+        sleep 0.05
       end
       # Fundamental intervals should should have heuristic score of its own lcm
       next [ratio, cents, lcm, lcm_log2, prime_fac] if is_fundamental

@@ -6,7 +6,7 @@ Helper methods/classes for livecoding just intonation music in Sonic Pi.
 
 ## How to use
 
-Copy [prelude_for_livecoding.rb](/prelude_for_livecoding.rb) into Sonic Pi and run it.
+Copy [prelude_for_livecoding.rb](/prelude_for_livecoding.rb) into a buffer in Sonic Pi and run it first to load the 'library'.
 
 Ensure the following global variables are configured propertly:
 

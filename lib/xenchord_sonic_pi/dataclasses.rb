@@ -112,7 +112,7 @@ class Monzo
 
   # Interval multiplication/stacking == Ratio powers
   def *(other)
-    raise "Invalid type for interval stacking" unless other.is_a? Numeric
+    raise "Monzo#* expects a Numeric operand. Received #{other.class} instead" unless other.is_a? Numeric
 
     Monzo.new(ratio**other.to_i)
   end
@@ -241,29 +241,19 @@ end
 
 # Represents multiple numerics as a ratio of integers relative to
 # each other.
-class MultiRatio
-  # Stores the integer ratio (ordering is preserved) as a list of Integers
-  # (preserves the relative ratio between numbers, but not the absolute value)
-  attr_reader :ratio
-  attr_reader :ratio_monzos # Same as relative intervals as @ratio but in Monzo form
-  attr_reader :centroid # Average of frequencies in log2 units (num. octaves) relative to @origin.
-  attr_reader :ratio_set # Same as @ratio, but as a Hash Set
-
-  attr_reader :monzos, :monzos_sorted
-
-  # Stores the original absolute input value of the first value
-  attr_reader :origin
-
-  # stores the absolute monzo of where the relative 1/1 of @ratio is.
-  # @monzos[i] = fund + @ratio[i]
-  attr_reader :fund # original absolute values of the ratio in monzo form
+# Do not repeat the same note twice (certain calculation features
+# depend on the uniqueness of each note).
+class Chord
+  attr_reader :monzos, :abs_ratios, :monzos_sorted, :origin, :fund
+  attr_reader :ratio_monzos, :ratio, :ratio_set, :centroid
 
   def initialize(*p)
     p = p[0].to_a if p[0].is_a? Enumerable
 
-    if p[0].is_a? MultiRatio
+    if p[0].is_a? Chord
       cr = p[0] # copy constructor
       @monzos = cr.monzos
+      @abs_ratios = cr.abs_ratios
       @monzos_sorted = cr.monzos_sorted
       @origin = cr.origin
       @fund = cr.fund
@@ -273,30 +263,53 @@ class MultiRatio
       @centroid = cr.centroid
     else
       # Absolute values
+
+      # The absolute notes.
+      # @type [Array<Monzo>]
       @monzos = p.map { Monzo.new _1 }
+      # The absolute ratios of the chord.
+      # @type [Array<Rational>]
+      @abs_ratios = @monzos.map(&:ratio)
+      # The absolute notes in ascending order.
+      # @type [Array<Monzo>]
       @monzos_sorted = @monzos.sort
+      # The first Monzo in `Chord#monzos`
+      # @type [Monzo]
       @origin = @monzos[0]
+      # The absolute note that represents '1' in the integer ratio Chord#ratio.
+      # @type [Monzo]
       @fund = Monzo.gcf(monzos)
 
       # Relative values
+
+      # Monzo form of `Chord#ratio`. Relative to Chord#fund.
+      # @type [Array<Monzo>]
       @ratio_monzos = @monzos.map { _1 - @fund }
+
+      # Most reduced integer ratio.
+      # @type [Array<Integer>]
       @ratio = @ratio_monzos.map do
-        $GLO.puts("WARNING: MultiRatio has non-integer: #{_1.ratio}") if _1.ratio % 1 != 0
+        $GLO.puts("ERROR: Chord has non-integer: #{_1.ratio}") if _1.ratio % 1 != 0
         _1.ratio.to_i
       end
+      # Set of relative ratios.
+      # @type [Set<Integer>]
       @ratio_set = Set.new(ratio)
+
+      # Average of frequencies in log2 units (number of octaves) relative to @origin.
+      # @type [Float]
       @centroid = Math.log2(@ratio.reduce(1r) { |acc, r| acc * r }) / @monzos.size - Math.log2(@ratio[0])
     end
   end
 
-  # Returns true if the relative ratios between two MultiRatios are the same
+  # Returns true if the relative ratios between two Chords are the same
   # Order and absolute origin can be different.
   def same_voicing?(other)
     @ratio_set == other.ratio_set
   end
 
-  # Returns new MultiRatio with octave shift such that the absolute centroid
-  # of the new MultiRatio is as close as possible to the specified middle
+  # Returns new Chord with octave shift such that the absolute centroid
+  # of the new Chord is as close as possible to the specified middle
   #
   # mid: <Monzo | Numeric>
   #   desired centroid middle location of voicing.
@@ -308,7 +321,21 @@ class MultiRatio
                end
     abs_centroid = @centroid + @origin.log2
     oct_offset = (mid_octs - abs_centroid).round
-    MultiRatio.new(self).shift_origin(Monzo.new(oct_offset, 0))
+    Chord.new(self).shift_origin(Monzo.new(oct_offset, 0))
+  end
+
+  # Returns a new Chord with the lowest note shifted to the specified note.
+  # NOTE: The lowest note may not necessarily be Chord#origin.
+  # @param note [Monzo | Numeric] The note to shift to.
+  def root(note)
+    case note
+    when Monzo, Rational
+      Chord.new(self).shift_origin(- @monzos_sorted[0] + note)
+    when Numeric
+      Chord.new(self).shift_origin(Monzo.new(note.to_s.to_r) - @monzos_sorted[0])
+    else
+      raise "Invalid type"
+    end
   end
 
   def to_s
@@ -325,16 +352,39 @@ class MultiRatio
   end
   alias p play
 
-  # Change origin while keeping constant structure
+  # Returns a new Chord transposed up by given ratio/monzo.
   def +(other)
-    clone = MultiRatio.new(self)
+    clone = Chord.new(self)
     clone.shift_origin(other)
   end
 
+  # Returns a new Chord transposed down by given ratio/monzo.
   def -(other)
     other = Monzo.new(other) unless other.is_a? Monzo
     other = -other
     self + other
+  end
+
+  # Alias for Chord#root
+  def /(note)
+    self.root(note)
+  end
+
+  # Returns a new Chord concatenated with another Chord or Monzo
+  # Duplicates will be removed.
+  def &(other)
+    case other
+    when Chord
+      Chord.new([@monzos + other.monzos].to_set.to_a)
+    when Monzo
+      Chord.new([@monzos + [other]].to_set.to_a)
+    when Rational
+      Chord.new([@monzos + [Monzo.new(other)]].to_set.to_a)
+    when Numeric
+      Chord.new([@monzos + [Monzo.new(other.to_s.to_r)]].to_set.to_a)
+    else
+      raise "Expected Chord | Monzo | Numeric, got #{other.class} instead."
+    end
   end
 
   def size
@@ -367,26 +417,25 @@ class MultiRatio
   end
 
   # @param [Integer] length
-  # @return [Array<MultiRatio>] all possible combinations of the MultiRatio of given length
+  # @return [Array<Chord>] all possible combinations of the Chord of given length
   def combination(length)
-    @ratio.combination(length).map { MultiRatio.new(_1) }
+    @ratio.combination(length).map { Chord.new(_1) }
   end
 
   protected
 
   # Shift origin by a monzo
-  # This function mutates the instance!!
+  # This function mutates the instance! Only call this after cloning.
   def shift_origin(interval)
     interval = Monzo.new(interval) unless interval.is_a? Monzo
     @origin += interval
     @fund += interval
     @monzos.map! { _1 + interval }
+    @monzos_sorted.map! {_1 + interval }
+    @abs_ratios.map! { _1 * interval.ratio }
     self
   end
 end
-
-mr = MultiRatio.new(5/4r, 19/17r)
-mr3 = MultiRatio.new(1, 5/4r, 3/2r)
 
 # Represents collection of unique pitches within the interval [1/1, 2/1)
 class Harmony
