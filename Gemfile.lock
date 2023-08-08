@@ -72,9 +72,12 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  minitest (~> 5.0)
+  benchmark (~> 0.2.1)
+  json (~> 2.6)
+  minitest (~> 5.19)
   rake (~> 13.0)
-  rubocop (~> 1.21)
+  rexml (~> 3.2.6)
+  rubocop (~> 1.55)
   solargraph
   xenchord-sonic-pi!
 

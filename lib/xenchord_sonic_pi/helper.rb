@@ -1,30 +1,49 @@
 # HELPER METHODS
-# Run order: 4/4
+# Run order: after polyfills.rb and dataclasses.rb
 
 require 'json'
+require 'set'
 
-def tihai_search(notes_min, notes_max, rest_min, rest_max, target_matra)
+define :tihai_search do |notes_min, notes_max, rest_min, rest_max, target_matra|
 
 end
 
 # send osc
-def o(*args)
+define :o do |*args|
   osc_send($IP_ADDR, 9000, *args)
 end
 
 # Play a monzo or monzo-constructor parameter
 # Accepts var arguments of monzos, followed by play kwargs
-def p(*args, **kwargs)
+define :p do |*args, **kwargs|
   return if args.size == 0
   chd_monzos = args.map { |a|
     Monzo.new(a)
   }
   chd = chd_monzos.map{ |a|
-    hz = a.ratio * ROOT
-    o('/note', a.primes.to_json, a.ratio * ROOT)
+    hz = a.ratio * $F0_HZ
+    o('/note', a.primes.to_json, a.ratio * $F0_HZ)
     hz_to_midi hz
   }.to_a
-  play_chord chd, **kwargs
+  if kwargs.has_key?(:panspr) && chd.size > 1
+    amp = kwargs.fetch(:amp, 1.0).to_f / chd.size
+    pan, panspr = kwargs.fetch(:pan, 0.0), kwargs[:panspr].to_f
+    pans = (0...chd.size).map {
+      x = (pan - panspr + 2 * panspr *_1 / (chd.size - 1))
+      [[x, -1].max, 1].min
+    }
+    kwargs.delete(:pan)
+    kwargs.delete(:panspr)
+    kwargs.delete(:amp)
+    chd.each_with_index do |note, idx|
+      # generates a zigzag sequence from the center out
+      # e.g. if chd.size = 5, generates: 2, 1, 3, 0, 4
+      i = chd.size / 2 + ((idx + 1) / 2) * (1 - 2 * (idx % 2))
+      play note, pan: pans[i], amp: amp, **kwargs
+    end
+  else
+    play_chord chd, **kwargs
+  end
 end
 
 # euclidean cycle with additive numerical result
@@ -32,54 +51,23 @@ end
 # args: var args in groups of 3, each group representing one euclidean rhythm:
 #   (number accents, rotation, number to add)
 # returns a ring of numbers.
-def euc(size, *args)
+define :euc do |size, *args|
   assert args.size % 3 == 0, "euc must have additional arguments in multiples of 3"
-  l = args.each_slice(3).map {|acc, rot, num|
-    [spread(acc, size, rotate: rot), num]
-  }.reduce([0]*size) {|acc, (e_bools, num) |
+  l = args.each_slice(3).map {|accc, rot, num|
+    [spread(accc, size, rotate: rot), num]
+  }.reduce([0]*size) {|accc, (e_bools, num) |
     puts e_bools, num
     (0...size).map{
-      acc[_1] + (e_bools[_1] ? num : 0)
+      accc[_1] + (e_bools[_1] ? num : 0)
     }.to_a
   }
   ring(*l)
 end
 
-# n: The nth farey sequence to output
-# This isn't exactly the farey sequence:
-# - numerator and denominator are swapped
-# - only second half of the sequence returned
-# - sequence in reverse order
-#
-# Makes it more applicable for musical uses.
-# This function returns 1 octave of unique JI intervals up to given n odd limit.
-# Returns a list of Rationals
-#
-# This algo runs in O(n) :)
-def farey(n)
-  # x1/y1 stores the kth term, x2/y2 stores the (k+1th) term
-  x1, y1 = 1,2
-  x2, y2 = (n/2.0).ceil, (n/2.0).ceil * 2 - 1
-  terms = [Rational(y1, x1), Rational(y2, x2)]
-  x = 0, y = 0
-  while y != 1
-    c += 1
-    z = ((y1 + n) / y2).floor
-    x = z * x2 - x1
-    y = z * y2 - y1
-    terms.append(Rational(y,x))
-    x1 = x2
-    x2 = x
-    y1 = y2
-    y2 = y
-  end
-  return terms.reverse
-end
-
 # Input a list of Rationals that represent pitch classes modulo
 # the octave. Input should be normalized to appear within 1/1 to 2/1.
 #
-# The octave equivalence is applied based on ISO_OCT_EQV_BOUNDS.
+# The octave equivalence is applied based on $ISO_OCT_EQV_BOUNDS.
 #
 # rats:
 #   input list of Rationals in the interval [1, 2)
@@ -98,8 +86,8 @@ end
 #          (See comment below)
 #
 # See: https://www.facebook.com/groups/497105067092502/posts/2854653928004259/?comment_id=2854699357999716&reply_comment_id=2854871454649173
-def isoharm_search_full(rats, max_arith_diff=2r)
-  bel, abv = *ISO_OCT_EQV_BOUNDS
+define :isoharm_search_full do |rats, max_arith_diff=2r|
+  bel, abv = *$ISO_OCT_EQV_BOUNDS
 
   # Each element contains list of [rat, idx] pairs that correspond
   # to octave-equivalent notes of the input ratio at given idx
@@ -189,7 +177,7 @@ end
 # Same as isoharm_search_full, but returns MultiRatios,
 # removes duplicate voicings at different octaves.
 #
-def isoharm_search(rats, max_arith_diff=2r)
+define :isoharm_search do |rats, max_arith_diff=2r|
   h = isoharm_search_full(rats, max_arith_diff)
   # key is the length of isoharm
   isoharms = h.map{ |k,v| [
@@ -218,11 +206,11 @@ end
 # fix:
 #  list of 0-based indices of input notes to fix without changing its octave.
 #
-# This algo returns all isoharmonic subsets of length 3 and above.
+# This algo a list of the longest isoharmonic subsequences that fulfil the above criteria.
 #
 # Only returns the longest isoharmonic series that fulfils the notes to fix.
-def isoharm_search_2(rats, max_arith_diff=2r, fix=[])
-  bel, abv = *ISO_OCT_EQV_BOUNDS
+define :isoharm_search_2 do |rats, max_arith_diff=2r, fix=[]|
+  bel, abv = *$ISO_OCT_EQV_BOUNDS
 
   # List of lists.
   # Each ratio in `rats` gets turned into a list of [rat, idx, octave offset] triples.
@@ -263,21 +251,45 @@ def isoharm_search_2(rats, max_arith_diff=2r, fix=[])
       incl_idxs = [r_idx1, r_idx2]
       first_two = [notes_octs[r_idx1][o1], notes_octs[r_idx2][o2]].sort
       within_max_arith_diff = first_two[1][0] / first_two[0][0] < max_arith_diff
-      lower_passes_fix_check = not fix.include?(first_two[0][0]) or first_two[0][2] == 0
-      upper_passes_fix_check = not fix.include?(first_two[1][0]) or first_two[1][2] == 0
+      lower_passes_fix_check = !fix.include?(first_two[0][1]) || first_two[0][2] == 0
+      upper_passes_fix_check = !fix.include?(first_two[1][1]) || first_two[1][2] == 0
       if within_max_arith_diff and lower_passes_fix_check and upper_passes_fix_check
         search.push [incl_idxs, first_two, rem_terms]
       end
     }
   }
 
+  # Each entry in here is an isoharmonic subsequence that fulfills all the criteria.
+  # Successive entries are longer or equal in length to the previous entry.
+  #
+  # @type [Array<Array<Rational>>]
+  output = []
+
   search.each { |incl_idxs, arith_seq, rem_terms|
-    last_rat, last_idx, last_oct = *arith_seq[-1]
-    penult_rat, penult_idx, penult_oct = *arith_seq[-2]
-    looking_for = last_rat * 2 - penult_rat
-    sequence_collection = []
-    # rem_terms is in sorted order
+    last_rat, last_idx, _ = *arith_seq[-1]
+    penult_rat, penult_idx, _ = *arith_seq[-2]
+    rat_collection = [penult_rat, last_rat]
+    looking_for = rat_collection[-1] * 2 - rat_collection[-2]
+    used_idx = [penult_idx, last_idx].to_set
+
+    # rem_terms should be in increasing order
     rem_terms.each { |rat, idx, oct|
+      next if used_idx.include?(idx)
+      break if rat > looking_for # since it's sorted
+
+      # Reminder: don't need to check for max arith diff again as it is constant
+
+      if rat == looking_for && (!fix.include?(idx) || oct == 0)
+        rat_collection.push rat
+        used_idx.add idx
+        looking_for = rat_collection[-1] * 2 - rat_collection[-2]
+      end
     }
+
+    if output.size == 0 or rat_collection.size >= output[-1].size
+      output.push rat_collection
+    end
   }
+
+  return output
 end

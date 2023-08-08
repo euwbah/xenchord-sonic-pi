@@ -4,9 +4,25 @@ Helper methods/classes for livecoding just intonation music in Sonic Pi.
 
 (work in progress)
 
-## Configuration
+## How to use
 
-See variables in in [prelude_for_livecoding.rb](/prelude_for_livecoding.rb)
+Copy [prelude_for_livecoding.rb](/prelude_for_livecoding.rb) into Sonic Pi and run it.
+
+Ensure the following global variables are configured propertly:
+
+- `$LIB_ROOT` should point to where xenchord-sonic-pi/lib/xenchord_sonic_pi is
+- `$IP_ADDR` is optional, and should point to the local ip to send OSC messages when notes are played.
+- `$PRIME_LIMIT` refers to the highest prime number to consider in calculations in JI ratios.
+  Musical intervals should not exceed this prime limit.
+- `$ISO_OCT_EQV_BOUNDS` refers to the maximum number of octaves below and above to consider 'octave equivalent'.
+- `$$F0_HZ` refers to the fundamental frequency which the absolute interval 1/1 maps to.
+
+These global variables should not be modified, but you can read their values if required:
+
+- `$GLO` refers to the Sonic Pi Runtime scope. Do not change this as the other files require this to work.
+- `$PRIME_IDX_TABLE` maps each prime number to its index in the `$PRIMES` list. Do not change.
+- `$PRIMES` is a list of prime numbers.
+
 
 ## Development
 

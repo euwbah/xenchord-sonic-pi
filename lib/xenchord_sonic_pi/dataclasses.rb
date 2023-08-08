@@ -1,5 +1,5 @@
 # Data classes (all immutable)
-# Run order: 3/4
+# Run order: after polyfills.rb
 
 # Represents pitch/intervals
 # The + - operators perform interval addition/subtraction in exp space
@@ -44,19 +44,35 @@ class Monzo
       @primes = Hash.new(0)
       @ratio = 1/1r
       p.each_with_index do |pow, idx|
-        @primes[PRIMES[idx]] = pow.to_i
-        @ratio *= PRIMES[idx]**pow.to_i
+        @primes[$PRIMES[idx]] = pow.to_i
+        @ratio *= $PRIMES[idx]**pow.to_i
       end
       @prime_limit = @primes.keys.max
     end
   end
 
   def ==(other)
-    @ratio == other.ratio
+    if other.is_a? Monzo
+      @ratio == other.ratio
+    elsif other.is_a? Rational
+      @ratio == other
+    elsif other.is_a? Numeric
+      @ratio == other.to_s.to_r
+    else
+      raise "Unsupported type for comparison: comparing Monzo with #{other.class}"
+    end
   end
 
   def <=>(other)
-    @ratio <=> other.ratio
+    if other.is_a? Monzo
+      @ratio <=> other.ratio
+    elsif other.is_a? Rational
+      @ratio <=> other
+    elsif other.is_a? Numeric
+      @ratio <=> other.to_s.to_r
+    else
+      raise "Unsupported type for comparison: comparing Monzo with #{other.class}"
+    end
   end
 
   # Interval addition == Ratio multiplication
@@ -103,22 +119,28 @@ class Monzo
 
   # Infix operator for GCF of 2 monzos.
   # can think of this operator as bitwise and of the frobenius space (lol)
+  # @other [Monzo] Another monzo
+  # @return [Monzo] The GCF as a Monzo, represented as the minimum power of each prime.
   def &(other)
     gcf(other)
   end
 
   # Infix operator for LCM of 2 monzos.
+  # @other [Monzo] Another monzo
+  # @return [Monzo] The LCM as a monzo (Monzo#ratio will equal the LCM)
   def |(other)
     lcm(other)
   end
 
-  # Greatest common factor between N other monzos
-  # The GCF would be the smallest power of each prime.
+  # @param others [Monzo] One or more monzos.
+  # @return [Monzo] The GCF as a Monzo, represented as the minimum power of each prime.
   def gcf(*others)
     others = others[0] if others[0].is_a? Enumerable
     Monzo.gcf([self] + others)
   end
 
+  # @param others [Monzo] One or more monzos.
+  # @return [Monzo] The LCM as a monzo (Monzo.ratio will equal the LCM)
   def lcm(*others)
     others = others[0] if others[0].is_a? Enumerable
     Monzo.lcm([self] + others)
@@ -152,6 +174,10 @@ class Monzo
   end
   alias octaves log2
 
+  def to_r
+    @ratio
+  end
+
   def to_monzo_s
     m = @primes.map { |k, v| "#{k}^#{v}" }.join(" * ")
     "[#{m}>"
@@ -169,6 +195,8 @@ class Monzo
     to_s
   end
 
+  # @param monzos [Monzo] One or more monzos.
+  # @return [Monzo] The GCF as a Monzo, represented as the minimum power of each prime.
   def self.gcf(*monzos)
     monzos = monzos[0] if monzos[0].is_a? Enumerable
     incl_primes = monzos
@@ -182,22 +210,32 @@ class Monzo
     Monzo.new(gcf_primes)
   end
 
+  # @param monzos [Monzo] One or more monzos.
+  # @return [Monzo] The LCM as a monzo (Monzo#ratio will equal the LCM)
   def self.lcm(*monzos)
+    Monzo.new(Monzo.lcm_primes(*monzos))
+  end
+
+  # @param monzos [Monzo] One or more monzos.
+  # @return [Hash<Integer, Integer>] The LCM as a hash of primes and their powers.
+  #     This hash can be passed to Monzo.new to create a monzo with the LCM fleshed out.
+  def self.lcm_primes(*monzos)
     monzos = monzos[0] if monzos[0].is_a? Enumerable
     incl_primes = monzos
                   .map { _1.primes.keys }
                   .reduce([]) { |acc, elem| acc | elem }
-    lcm_primes = incl_primes.map do |p|
+    hash = incl_primes.map do |p|
       [p, monzos.map { _1.primes[p] }.max]
     end.to_h
-    Monzo.new(lcm_primes)
+    hash.default = 0 # set default power if base not present to 0
+    hash
   end
 end
 
 # Shorthand fn to create Monzo instance
 # NOTE: In Sonic Pi, referencing global functions like these inside classes requires
 # explicitly using the $GLO.<fn_name> prefix as defined in prelude_for_livecoding.rb.
-def m(*p)
+define :m do |*p|
   Monzo.new(*p)
 end
 
@@ -207,7 +245,11 @@ class MultiRatio
   # Stores the integer ratio (ordering is preserved) as a list of Integers
   # (preserves the relative ratio between numbers, but not the absolute value)
   attr_reader :ratio
-  attr_reader :ratio_monzos, :centroid, :ratio_set, :monzos # Same as relative intervals as @ratio but in Monzo form # Average of frequencies in log2 units (num. octaves) relative to @origin. # Same as @ratio, but as a Hash Set
+  attr_reader :ratio_monzos # Same as relative intervals as @ratio but in Monzo form
+  attr_reader :centroid # Average of frequencies in log2 units (num. octaves) relative to @origin.
+  attr_reader :ratio_set # Same as @ratio, but as a Hash Set
+
+  attr_reader :monzos, :monzos_sorted
 
   # Stores the original absolute input value of the first value
   attr_reader :origin
@@ -220,17 +262,19 @@ class MultiRatio
     p = p[0].to_a if p[0].is_a? Enumerable
 
     if p[0].is_a? MultiRatio
-      cr = p[0]
-      @ratio = cr.ratio
-      @ratio_set = cr.ratio_set
+      cr = p[0] # copy constructor
+      @monzos = cr.monzos
+      @monzos_sorted = cr.monzos_sorted
       @origin = cr.origin
       @fund = cr.fund
-      @monzos = cr.monzos
       @ratio_monzos = cr.ratio_monzos
+      @ratio = cr.ratio
+      @ratio_set = cr.ratio_set
       @centroid = cr.centroid
     else
       # Absolute values
       @monzos = p.map { Monzo.new _1 }
+      @monzos_sorted = @monzos.sort
       @origin = @monzos[0]
       @fund = Monzo.gcf(monzos)
 
@@ -291,6 +335,41 @@ class MultiRatio
     other = Monzo.new(other) unless other.is_a? Monzo
     other = -other
     self + other
+  end
+
+  def size
+    @ratio.size
+  end
+  alias length size
+
+  def [](i)
+    @monzos[i]
+  end
+
+  # Get the smallest interval between two adjacent notes
+  def min_interval
+    @monzos_sorted.each_cons(2).map { _2 - _1 }.min
+  end
+
+  # Get the largest interval between two adjacent notes
+  def max_interval
+    @monzos_sorted.each_cons(2).map { _2 - _1 }.max
+  end
+
+  # Get lowest common multiple of the overall chord.
+  # This LCM is calculated using the reduced integer multiratio.
+  def lcm
+    Monzo.lcm(@ratio_monzos).to_r
+  end
+
+  def lcm_primes
+    Monzo.lcm_primes(@ratio_monzos)
+  end
+
+  # @param [Integer] length
+  # @return [Array<MultiRatio>] all possible combinations of the MultiRatio of given length
+  def combination(length)
+    @ratio.combination(length).map { MultiRatio.new(_1) }
   end
 
   protected

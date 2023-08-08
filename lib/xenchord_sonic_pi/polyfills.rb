@@ -15,3 +15,13 @@ module Samplable
 end
 
 Array.prepend(Samplable)
+
+module InThreadPrint
+  def print(*args)
+    in_thread do
+      $GLO.puts(*args)
+    end
+  end
+end
+
+$GLO.class.prepend(InThreadPrint)
