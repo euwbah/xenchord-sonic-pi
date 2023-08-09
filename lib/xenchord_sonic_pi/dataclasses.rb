@@ -18,7 +18,7 @@ class Monzo
 
     if p.size == 0
       @ratio = 1/1r
-      @primes = {}
+      @primes = Hash.new(0)
       @prime_limit = 2
     elsif p[0].is_a? Monzo
       c = p[0]
@@ -49,6 +49,19 @@ class Monzo
       end
       @prime_limit = @primes.keys.max
     end
+  end
+
+  def hash
+    @ratio.hash
+  end
+
+  def eql?(other)
+    other.is_a?(Monzo) && @ratio == other.ratio
+  end
+
+  def cents
+    @cents_cache = Math.log2(@ratio) * 1200 unless defined?(@cents_cache)
+    @cents_cache
   end
 
   def ==(other)
@@ -180,7 +193,7 @@ class Monzo
 
   def to_monzo_s
     m = @primes.map { |k, v| "#{k}^#{v}" }.join(" * ")
-    "[#{m}>"
+    "[ #{m} >"
   end
 
   def to_s
