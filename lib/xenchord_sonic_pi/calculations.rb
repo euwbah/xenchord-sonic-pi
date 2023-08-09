@@ -441,7 +441,7 @@ class CalcSingleton
   # @param debug [{:evals => Integer, :calls => Integer}] Debug info.
   #      `:evals`: Number of evaluations done (excluding lookups).
   #      `:calls`: Number of calls to this function (including lookups).
-  def rec_nadic_complexity(monzos, power_2: 1.13, otonal_utonal_imbalance: 8, lookup: Hash.new, debug: {:evals => 0, :calls => 0})
+  def rec_nadic_complexity(monzos, power_2: 1.13, otonal_utonal_imbalance: 6, lookup: Hash.new, debug: {:evals => 0, :calls => 0})
     monzos = monzos.monzos_sorted if monzos.is_a?(Chord)
     raise "rec_nadic_complexity must be passed at least 2 monzos" if monzos.size <= 1
     debug[:calls] += 1
