@@ -132,7 +132,7 @@ class CalcSingleton
       Math.exp(-0.5 * (dist_cents / (jnd_cents)) ** 2)
     end
 
-    smooth_iterations = 2
+    smooth_iterations = 3
 
     # smoothen out the smooth_lcm_pre array using weight & distance_weight.
     smooth_iterations.times do |rpt|
@@ -174,14 +174,15 @@ class CalcSingleton
           when 1
             distance *= 5.0
           when 3
-            distance *= 2
+            distance *= 1.6
           when 5
-            distance *= 1.5
+            distance *= 1.2
           when 7
             distance *= 1
           end
-          # normal distribution where standard deviation is JND.
-          neighbours << [nei_complexity, nei_weight * distance_weight.(distance), nei_ratio]
+          # distance_weight is a normal distribution where standard deviation is JND.
+          w_mult = nei_weight * distance_weight.(distance)
+          neighbours << [nei_complexity, w_mult, nei_ratio]
         end
 
         curr_idx = idx
@@ -200,13 +201,14 @@ class CalcSingleton
           when 1
             distance *= 5.0
           when 3
-            distance *= 2
+            distance *= 1.6
           when 5
-            distance *= 1.5
+            distance *= 1.2
           when 7
             distance *= 1
           end
-          neighbours << [nei_complexity, nei_weight * distance_weight.(distance), nei_ratio]
+          w_mult = nei_weight * distance_weight.(distance)
+          neighbours << [nei_complexity, w_mult, nei_ratio]
         end
 
         # take weighted average
